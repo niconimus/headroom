@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NetSuite Dashboard</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7;
+    --surface: #fcfcfb;
+    --surface-2: #f0efec;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11, 11, 11, 0.10);
+    --series-1: #2a78d6;
+    --good: #0ca30c;
+    --warning: #fab219;
+    --critical: #d03b3b;
+    --good-ink: #006300;
+    --critical-ink: #b42f2f;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d;
+      --surface: #1a1a19;
+      --surface-2: #232321;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255, 255, 255, 0.10);
+      --series-1: #3987e5;
+      --good-ink: #0ca30c;
+      --critical-ink: #e66767;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d;
+    --surface: #1a1a19;
+    --surface-2: #232321;
+    --ink: #ffffff;
+    --ink-2: #c3c2b7;
+    --muted: #898781;
+    --grid: #2c2c2a;
+    --axis: #383835;
+    --border: rgba(255, 255, 255, 0.10);
+    --series-1: #3987e5;
+    --good-ink: #0ca30c;
+    --critical-ink: #e66767;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--page);
+    color: var(--ink);
+    font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  main { max-width: 1120px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 24px; margin: 0 0 6px; }
+  h2 { font-size: 17px; margin: 0 0 12px; }
+  .meta { color: var(--ink-2); font-size: 14px; }
+  .meta strong { color: var(--ink); }
+  .basis { margin-top: 8px; padding: 8px 12px; background: var(--surface-2); border-radius: 8px;
+           font-size: 13px; color: var(--ink-2); overflow-wrap: anywhere; }
+  section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+            padding: 16px; margin-top: 16px; }
+  .notes { margin: 0; padding-left: 18px; color: var(--ink-2); }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+  .kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
+  .kpi .label { color: var(--ink-2); font-size: 13px; }
+  .kpi .value { font-size: 26px; font-weight: 650; margin-top: 4px; overflow-wrap: anywhere; }
+  .kpi .note { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .summary { font-size: 14px; color: var(--ink-2); margin-bottom: 10px; }
+  ul.checks { list-style: none; margin: 0; padding: 0; }
+  ul.checks li { display: grid; grid-template-columns: 150px 1fr; gap: 12px; padding: 10px 0;
+                 border-top: 1px solid var(--grid); }
+  ul.checks li:first-child { border-top: 0; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px;
+           white-space: nowrap; }
+  .badge .dot { width: 18px; height: 18px; border-radius: 50%; display: inline-grid; place-items: center;
+                color: #fff; font-size: 12px; font-weight: 700; flex: none; }
+  .s-ok .dot { background: var(--good); }
+  .s-warn .dot { background: var(--warning); color: #0b0b0b; }
+  .s-fail .dot { background: var(--critical); }
+  .s-unknown .dot { background: var(--muted); }
+  .check-label { font-weight: 600; }
+  .check-detail { color: var(--ink-2); font-size: 14px; overflow-wrap: anywhere; }
+  .chart-row { display: grid; grid-template-columns: minmax(90px, 30%) 1fr; gap: 10px; align-items: center;
+               min-height: 30px; position: relative; }
+  .chart-row:hover { background: var(--surface-2); border-radius: 6px; }
+  .chart-label { font-size: 13px; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chart-track { position: relative; height: 28px; }
+  .chart-zero { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--axis); }
+  .chart-bar { position: absolute; top: 7px; height: 14px; background: var(--series-1); }
+  .chart-bar.pos { border-radius: 0 4px 4px 0; }
+  .chart-bar.neg { border-radius: 4px 0 0 4px; }
+  .chart-value { position: absolute; top: 4px; font-size: 12px; color: var(--ink); white-space: nowrap;
+                 font-variant-numeric: tabular-nums; }
+  .chart + .chart { margin-top: 20px; }
+  .chart-unit { color: var(--muted); font-size: 12px; margin: -8px 0 8px; }
+  .tip { position: fixed; pointer-events: none; background: var(--ink); color: var(--surface); padding: 6px 8px;
+         border-radius: 6px; font-size: 12px; display: none; z-index: 10; max-width: 280px; }
+  .table-wrap { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid var(--grid); text-align: left; vertical-align: top; }
+  th { color: var(--ink-2); font-weight: 600; background: var(--surface-2); position: sticky; top: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.total td { font-weight: 700; background: var(--surface-2); }
+  details summary { cursor: pointer; font-weight: 600; }
+  pre { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface-2); padding: 10px;
+        border-radius: 8px; font-size: 12px; }
+  .q { margin-top: 14px; }
+  .q .q-head { font-size: 13px; color: var(--ink-2); }
+  footer { color: var(--muted); font-size: 12px; margin-top: 20px; }
+  @media (max-width: 600px) {
+    ul.checks li { grid-template-columns: 1fr; gap: 4px; }
+    .kpi .value { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div class="tip" id="tip" role="tooltip"></div>
+<script>
+const DATA = /*__DASHBOARD_DATA__*/null;
+
+(function () {
+  const app = document.getElementById('app');
+  const tip = document.getElementById('tip');
+  if (!DATA) { app.textContent = 'No data.'; return; }
+  const meta = DATA.meta || {};
+  const lang = meta.lang === 'en' ? 'en' : 'de';
+  document.documentElement.lang = lang;
+  const T = {
+    de: { checks: 'Prüfungen', notes: 'Hinweise', source: 'Quelle', status: { ok: 'OK', warn: 'Achtung', fail: 'Blocker', unknown: 'nicht bestimmbar' },
+          total: 'Summe', rows: 'Treffer', fetched: 'abgerufen', asOf: 'Stand', created: 'Erstellt', readOnly: 'nur lesend erstellt',
+          sum: (c) => `${c.fail} Blocker · ${c.warn} Achtung · ${c.ok} OK · ${c.unknown} nicht bestimmbar` },
+    en: { checks: 'Checks', notes: 'Notes', source: 'Source', status: { ok: 'OK', warn: 'Attention', fail: 'Blocker', unknown: 'not determinable' },
+          total: 'Total', rows: 'results', fetched: 'fetched', asOf: 'As of', created: 'Created', readOnly: 'read-only',
+          sum: (c) => `${c.fail} blocker · ${c.warn} attention · ${c.ok} OK · ${c.unknown} not determinable` }
+  }[lang];
+  const ICON = { ok: '✓', warn: '!', fail: '✕', unknown: '?' };
+  const locale = lang === 'de' ? 'de-DE' : 'en-US';
+  const nf = new Intl.NumberFormat(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pf = new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 1 });
+
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined && text !== null) e.textContent = String(text);
+    return e;
+  }
+  function fmtAmount(v, cur) {
+    if (v === null || v === undefined || v === '') return '';
+    const n = Number(v);
+    if (!isFinite(n)) return String(v);
+    return cur ? (lang === 'de' ? `${nf.format(n)} ${cur}` : `${cur} ${nf.format(n)}`) : nf.format(n);
+  }
+  function parseDate(v) {
+    if (!v) return null;
+    let m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (m) return [m[1], m[2], m[3]];
+    m = String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (m) return [m[3], m[1].padStart(2, '0'), m[2].padStart(2, '0')];
+    return null;
+  }
+  function fmtDate(v) {
+    const p = parseDate(v);
+    if (!p) return v ? String(v) : '';
+    return lang === 'de' ? `${p[2]}.${p[1]}.${p[0]}` : `${p[0]}-${p[1]}-${p[2]}`;
+  }
+  function fmtCell(v, col, row) {
+    switch (col.type) {
+      case 'amount': return fmtAmount(v, col.currency || '');
+      case 'number': return (v === null || v === undefined || v === '') ? '' : new Intl.NumberFormat(locale).format(Number(v));
+      case 'pct': return (v === null || v === undefined || v === '') ? '' : pf.format(Number(v));
+      case 'date': return fmtDate(v);
+      default: return v === null || v === undefined ? '' : String(v);
+    }
+  }
+  function showTip(evt, text) {
+    tip.textContent = text;
+    tip.style.display = 'block';
+    const x = Math.min(evt.clientX + 12, window.innerWidth - tip.offsetWidth - 8);
+    tip.style.left = x + 'px';
+    tip.style.top = (evt.clientY + 12) + 'px';
+  }
+  function hideTip() { tip.style.display = 'none'; }
+
+  // Header
+  const head = el('header');
+  head.appendChild(el('h1', null, meta.title || 'NetSuite'));
+  const line = el('div', 'meta');
+  const acc = el('strong', null, meta.account || '');
+  line.appendChild(acc);
+  if (meta.env) line.appendChild(document.createTextNode(` (${meta.env})`));
+  if (meta.as_of) line.appendChild(document.createTextNode(` · ${T.asOf} ${fmtDate(meta.as_of)}`));
+  head.appendChild(line);
+  if (meta.basis) head.appendChild(el('div', 'basis', 'Basis: ' + meta.basis));
+  app.appendChild(head);
+  document.title = meta.title || 'NetSuite Dashboard';
+
+  // KPIs
+  if (Array.isArray(DATA.kpis) && DATA.kpis.length) {
+    const grid = el('div', 'kpis');
+    grid.style.marginTop = '16px';
+    DATA.kpis.forEach((k) => {
+      const card = el('div', 'kpi');
+      card.appendChild(el('div', 'label', k.label));
+      const val = k.type === 'amount' ? fmtAmount(k.value, k.currency) :
+                  k.type === 'pct' ? pf.format(Number(k.value)) :
+                  (typeof k.value === 'number' ? new Intl.NumberFormat(locale).format(k.value) : k.value);
+      card.appendChild(el('div', 'value', val));
+      if (k.note) card.appendChild(el('div', 'note', k.note));
+      grid.appendChild(card);
+    });
+    app.appendChild(grid);
+  }
+
+  // Checks
+  const checks = Array.isArray(meta.checks) ? meta.checks : [];
+  if (checks.length) {
+    const sec = el('section');
+    sec.appendChild(el('h2', null, T.checks));
+    const counts = { ok: 0, warn: 0, fail: 0, unknown: 0 };
+    checks.forEach((c) => { counts[c.status in counts ? c.status : 'unknown'] += 1; });
+    sec.appendChild(el('div', 'summary', T.sum(counts)));
+    const order = { fail: 0, warn: 1, unknown: 2, ok: 3 };
+    const ul = el('ul', 'checks');
+    checks.slice().sort((a, b) => (order[a.status] ?? 2) - (order[b.status] ?? 2)).forEach((c) => {
+      const st = c.status in ICON ? c.status : 'unknown';
+      const li = el('li');
+      const badge = el('span', 'badge s-' + st);
+      const dot = el('span', 'dot', ICON[st]);
+      dot.setAttribute('aria-hidden', 'true');
+      badge.appendChild(dot);
+      badge.appendChild(el('span', null, T.status[st]));
+      li.appendChild(badge);
+      const body = el('div');
+      body.appendChild(el('div', 'check-label', c.label));
+      if (c.detail) body.appendChild(el('div', 'check-detail', c.detail));
+      li.appendChild(body);
+      ul.appendChild(li);
+    });
+    sec.appendChild(ul);
+    app.appendChild(sec);
+  }
+
+  // Notes
+  if (Array.isArray(meta.notes) && meta.notes.length) {
+    const sec = el('section');
+    sec.appendChild(el('h2', null, T.notes));
+    const ul = el('ul', 'notes');
+    meta.notes.forEach((n) => ul.appendChild(el('li', null, n)));
+    sec.appendChild(ul);
+    app.appendChild(sec);
+  }
+
+  // Charts: horizontal bars, one hue, zero baseline, direct value labels, hover tooltip
+  if (Array.isArray(DATA.charts) && DATA.charts.length) {
+    const sec = el('section');
+    DATA.charts.forEach((ch) => {
+      const wrap = el('div', 'chart');
+      wrap.appendChild(el('h2', null, ch.title || ''));
+      if (ch.unit) wrap.appendChild(el('div', 'chart-unit', ch.unit));
+      const series = Array.isArray(ch.series) ? ch.series : [];
+      const vals = series.map((s) => Number(s.value) || 0);
+      const max = Math.max(0, ...vals), min = Math.min(0, ...vals);
+      const span = (max - min) || 1;
+      const labelRoom = 0.22; // share of the track kept free for value labels
+      const scale = (1 - labelRoom) / span;
+      const zero = (-min * scale + (min < 0 ? labelRoom / 2 : 0)) * 100;
+      series.forEach((s, i) => {
+        const v = vals[i];
+        const row = el('div', 'chart-row');
+        row.appendChild(el('div', 'chart-label', s.label));
+        const track = el('div', 'chart-track');
+        const z = el('div', 'chart-zero'); z.style.left = zero + '%'; track.appendChild(z);
+        const w = Math.abs(v) * scale * 100;
+        const bar = el('div', 'chart-bar ' + (v < 0 ? 'neg' : 'pos'));
+        bar.style.width = Math.max(w, v === 0 ? 0 : 0.5) + '%';
+        bar.style.left = (v < 0 ? zero - w : zero) + '%';
+        track.appendChild(bar);
+        const lab = el('div', 'chart-value', fmtAmount(v, ''));
+        if (v < 0) { lab.style.right = (100 - (zero - w)) + '%'; lab.style.paddingRight = '4px'; }
+        else { lab.style.left = (zero + w) + '%'; lab.style.paddingLeft = '4px'; }
+        track.appendChild(lab);
+        row.appendChild(track);
+        const tipText = `${s.label}: ${fmtAmount(v, ch.unit || '')}` + (s.note ? ` · ${s.note}` : '');
+        row.addEventListener('mousemove', (e) => showTip(e, tipText));
+        row.addEventListener('mouseleave', hideTip);
+        row.setAttribute('aria-label', tipText);
+        wrap.appendChild(row);
+      });
+      sec.appendChild(wrap);
+    });
+    app.appendChild(sec);
+  }
+
+  // Tables (from sheets) with per-currency totals, never a cross-currency grand total
+  (Array.isArray(DATA.sheets) ? DATA.sheets : []).forEach((sh) => {
+    const sec = el('section');
+    sec.appendChild(el('h2', null, sh.name || ''));
+    const cols = sh.columns || [];
+    const rows = sh.rows || [];
+    const tw = el('div', 'table-wrap');
+    const table = el('table');
+    const thead = el('thead'); const hr = el('tr');
+    cols.forEach((c) => {
+      const th = el('th', ['amount', 'number', 'pct'].includes(c.type) ? 'num' : null, c.label || c.key);
+      th.scope = 'col'; hr.appendChild(th);
+    });
+    thead.appendChild(hr); table.appendChild(thead);
+    const tbody = el('tbody');
+    rows.forEach((r) => {
+      const tr = el('tr');
+      cols.forEach((c) => tr.appendChild(el('td', ['amount', 'number', 'pct'].includes(c.type) ? 'num' : null, fmtCell(r[c.key], c, r))));
+      tbody.appendChild(tr);
+    });
+    if (sh.totals && rows.length) {
+      const amountCols = cols.filter((c) => c.type === 'amount');
+      let groupKey = sh.subtotal_by || null;
+      const curCol = cols.find((c) => c.type === 'currency');
+      if (!groupKey && curCol && new Set(rows.map((r) => r[curCol.key])).size > 1) groupKey = curCol.key;
+      const groups = groupKey ? [...new Set(rows.map((r) => String(r[groupKey])))].sort() : [null];
+      groups.forEach((g) => {
+        const tr = el('tr', 'total');
+        cols.forEach((c, i) => {
+          if (amountCols.includes(c)) {
+            const sum = rows.filter((r) => g === null || String(r[groupKey]) === g)
+                            .reduce((a, r) => a + (Number(r[c.key]) || 0), 0);
+            tr.appendChild(el('td', 'num', fmtAmount(sum, c.currency || '')));
+          } else {
+            tr.appendChild(el('td', null, i === 0 ? (g === null ? T.total : `${T.total} ${g}`) : ''));
+          }
+        });
+        tbody.appendChild(tr);
+      });
+    }
+    table.appendChild(tbody); tw.appendChild(table); sec.appendChild(tw);
+    app.appendChild(sec);
+  });
+
+  // Source
+  const queries = Array.isArray(meta.queries) ? meta.queries : [];
+  const src = el('section');
+  const det = el('details');
+  det.appendChild(el('summary', null, T.source));
+  const srcMeta = el('div', 'meta');
+  srcMeta.textContent = [meta.account, meta.env, meta.as_of ? `${T.asOf} ${fmtDate(meta.as_of)}` : '', meta.basis]
+    .filter(Boolean).join(' · ');
+  det.appendChild(srcMeta);
+  queries.forEach((q) => {
+    const box = el('div', 'q');
+    const counts = (q.totalResults !== undefined ? ` · ${q.totalResults} ${T.rows}` : '') +
+                   (q.fetched !== undefined ? ` · ${q.fetched} ${T.fetched}` : '');
+    box.appendChild(el('div', 'q-head', (q.purpose || '') + counts));
+    box.appendChild(el('pre', null, q.suiteql || ''));
+    det.appendChild(box);
+  });
+  src.appendChild(det);
+  app.appendChild(src);
+
+  app.appendChild(el('footer', null, `${T.created} ${meta.created || ''} · ${T.readOnly}`));
+})();
+</script>
+</body>
+</html>
