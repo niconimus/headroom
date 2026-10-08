@@ -40,11 +40,11 @@
       "id": 3,
       "name": "consolidated-opex-variance-en",
       "prompt": "In 4a-DEMO_ALL, why did consolidated operating expenses change from August to September 2026? Top drivers by account and subsidiary.",
-      "expected_output": "Translated to the parent currency (USD) per period. Expense-type accounts: Aug 2026 368,243.04 USD, Sep 2026 343,356.01 USD, change -24,887.03 USD (if COGS/other expenses are included the scope is stated). Drivers by account and subsidiary plus remainder sum to the total change. Basis line names consolidated, USD, both periods, book. No SuiteQL in the chat answer.",
+      "expected_output": "Translated to the parent currency (USD) per period. Expense-type accounts per the consolidated Income Statement report: Aug 2026 368,243.03 USD, Sep 2026 343,856.01 USD, change -24,387.03 USD (SuiteQL alone shows Sep 343,356.01 / -24,887.03 because this role cannot read expense report #4, USD 500) (if COGS/other expenses are included the scope is stated). Drivers by account and subsidiary plus remainder sum to the total change. Basis line names consolidated, USD, both periods, book. No SuiteQL in the chat answer.",
       "files": [],
       "expectations": [
         "Amounts are translated into one currency (USD) before summing across subsidiaries - no raw cross-currency sum",
-        "States the total change; if scope is Expense accounts it is about -24,887 USD (Aug ~368,243 vs Sep ~343,356); if another scope is used it is explicitly defined",
+        "States the total change for Expense accounts as -24,387 USD (report-confirmed: Aug 368,243.03 vs Sep 343,856.01), or -24,887 USD with the caveat that some documents are not visible to SuiteQL; another scope must be explicitly defined",
         "Lists drivers by account and subsidiary whose amounts plus an 'other' remainder add up to the total change",
         "Has a basis line naming consolidated/parent currency, both periods and the accounting book",
         "The chat answer contains no SuiteQL code",
